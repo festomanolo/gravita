@@ -1,18 +1,3 @@
-    except Exception as e:
-        print(f"[gravita] reset_machine: machineid update failed – {e}")
-        return False
-
-
-# ── public entry point ────────────────────────────────────────────────────────
-
-def reset_windsurf_machine_id(verbose: bool = True) -> bool:
-    """
-    Rotate all Windsurf machine/telemetry IDs.
-
-    Returns True if storage.json was updated, False if Windsurf data is not
-    found or writes fail. Always safe to call – skips silently when Windsurf
-    is not installed.
-    """
     storage = _storage_json()
 
     if not storage.exists():
