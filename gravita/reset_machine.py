@@ -127,10 +127,7 @@ def _update_machineid(path: Path, new_id: str) -> bool:
 
 def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     """
-    Generate fresh telemetry/machine IDs for Cursor IDE and write them to:
-      • storage.json
-      • state.vscdb  (SQLite)
-      • machineId    (plain text)
+    Rotate all Windsurf machine/telemetry IDs.
 
     Returns True on success, False if Cursor data files are not found or
     cannot be written (e.g. Cursor is not installed).
