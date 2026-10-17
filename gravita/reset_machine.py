@@ -47,3 +47,15 @@ def _cursor_machineid_path() -> Path:
         return Path.home() / "Library" / "Application Support" / "Cursor" / "machineId"
     else:
         return Path.home() / ".config" / "cursor" / "machineid"
+
+
+# ── core reset logic ──────────────────────────────────────────────────────────
+
+def _generate_ids() -> dict:
+    dev_device_id = str(uuid.uuid4())
+    return {
+        "telemetry.devDeviceId": dev_device_id,
+        "telemetry.machineId": hashlib.sha256(os.urandom(32)).hexdigest(),
+        "telemetry.macMachineId": hashlib.sha512(os.urandom(64)).hexdigest(),
+        "telemetry.sqmId": "{" + str(uuid.uuid4()).upper() + "}",
+        "storage.serviceMachineId": dev_device_id,
