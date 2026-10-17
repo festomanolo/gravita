@@ -1,18 +1,3 @@
-"""
-reset_machine.py – Reset Windsurf IDE machine/telemetry IDs before gravita starts.
-
-Windsurf stores its identity in three places:
-  • ~/Library/Application Support/Windsurf/User/globalStorage/storage.json
-      keys: telemetry.machineId, telemetry.devDeviceId, telemetry.sqmId
-  • ~/Library/Application Support/Windsurf/User/globalStorage/state.vscdb
-      ItemTable keys: storage.serviceMachineId
-  • ~/Library/Application Support/Windsurf/machineid
-      plain-text UUID
-
-This module is stdlib-only (no third-party deps).
-"""
-
-import hashlib
 import json
 import os
 import shutil
