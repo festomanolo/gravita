@@ -58,6 +58,7 @@ def _generate_ids() -> dict:
     sqm_id = "{" + str(uuid.uuid4()).upper() + "}"
     service_machine_id = str(uuid.uuid4())
     return {
+        # storage.json keys
         "telemetry.devDeviceId": dev_device_id,
         "telemetry.machineId": hashlib.sha256(os.urandom(32)).hexdigest(),
         "telemetry.macMachineId": hashlib.sha512(os.urandom(64)).hexdigest(),
