@@ -75,7 +75,6 @@ def _backup(path: Path) -> None:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dest = path.with_suffix(f"{path.suffix}.bak.{stamp}")
     shutil.copy2(path, dest)
-    return dest
 
 
 def _update_storage_json(storage: Path, new_ids: dict) -> bool:
