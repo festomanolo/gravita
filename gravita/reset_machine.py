@@ -1,9 +1,15 @@
 """
-reset_machine.py – Reset Cursor IDE machine/telemetry IDs before gravita starts.
+reset_machine.py – Reset Windsurf IDE machine/telemetry IDs before gravita starts.
 
-Ported from cursor-free-vip/reset_machine_manual.py (MIT licence).
-All external dependencies (colorama, translator, config, new_signup) have been
-removed so this module runs with the standard library only.
+Windsurf stores its identity in three places:
+  • ~/Library/Application Support/Windsurf/User/globalStorage/storage.json
+      keys: telemetry.machineId, telemetry.devDeviceId, telemetry.sqmId
+  • ~/Library/Application Support/Windsurf/User/globalStorage/state.vscdb
+      ItemTable keys: storage.serviceMachineId
+  • ~/Library/Application Support/Windsurf/machineid
+      plain-text UUID
+
+This module is stdlib-only (no third-party deps).
 """
 
 import hashlib
@@ -17,145 +23,143 @@ from datetime import datetime
 from pathlib import Path
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# ── path resolution ───────────────────────────────────────────────────────────
 
-def _cursor_storage_path() -> Path:
-    """Return the path to Cursor's storage.json for the current OS."""
-    if sys.platform == "win32":
-        appdata = os.getenv("APPDATA", "")
-        return Path(appdata) / "Cursor" / "User" / "globalStorage" / "storage.json"
-    elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
+def _windsurf_base() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Windsurf"
     elif sys.platform.startswith("linux"):
         sudo_user = os.environ.get("SUDO_USER")
         home = Path(f"/home/{sudo_user}") if sudo_user else Path.home()
-        return home / ".config" / "cursor" / "User" / "globalStorage" / "storage.json"
+        return home / ".config" / "Windsurf"
+    elif sys.platform == "win32":
+        return Path(os.getenv("APPDATA", "")) / "Windsurf"
     else:
         raise OSError(f"Unsupported OS: {sys.platform}")
 
 
-def _cursor_sqlite_path() -> Path:
-    """Return the path to Cursor's state.vscdb SQLite database."""
-    return _cursor_storage_path().parent / "state.vscdb"
+def _storage_json() -> Path:
+    return _windsurf_base() / "User" / "globalStorage" / "storage.json"
 
 
-def _cursor_machineid_path() -> Path:
-    """Return the path to the machineId file."""
-    if sys.platform == "win32":
-        return Path(os.getenv("APPDATA", "")) / "Cursor" / "machineId"
-    elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Cursor" / "machineId"
-    else:
-        return Path.home() / ".config" / "cursor" / "machineid"
+def _state_db() -> Path:
+    return _windsurf_base() / "User" / "globalStorage" / "state.vscdb"
 
 
-# ── core reset logic ──────────────────────────────────────────────────────────
+def _machineid_file() -> Path:
+    return _windsurf_base() / "machineid"
+
+
+# ── ID generation ─────────────────────────────────────────────────────────────
 
 def _generate_ids() -> dict:
     dev_device_id = str(uuid.uuid4())
+    machine_id = hashlib.sha256(os.urandom(32)).hexdigest()
+    sqm_id = "{" + str(uuid.uuid4()).upper() + "}"
+    service_machine_id = str(uuid.uuid4())
     return {
+        # storage.json keys
         "telemetry.devDeviceId": dev_device_id,
-        "telemetry.machineId": hashlib.sha256(os.urandom(32)).hexdigest(),
-        "telemetry.macMachineId": hashlib.sha512(os.urandom(64)).hexdigest(),
-        "telemetry.sqmId": "{" + str(uuid.uuid4()).upper() + "}",
-        "storage.serviceMachineId": dev_device_id,
+        "telemetry.machineId": machine_id,
+        "telemetry.sqmId": sqm_id,
+        # SQLite keys
+        "storage.serviceMachineId": service_machine_id,
+        # machineid file (use service_machine_id to stay consistent)
+        "_machineid": service_machine_id,
     }
 
 
-def _backup(path: Path) -> Path:
+# ── writers ───────────────────────────────────────────────────────────────────
+
+def _backup(path: Path) -> None:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dest = path.with_suffix(f"{path.suffix}.bak.{stamp}")
     shutil.copy2(path, dest)
-    return dest
 
 
-def _update_storage_json(storage: Path, new_ids: dict) -> bool:
+def _update_storage_json(path: Path, new_ids: dict) -> bool:
     try:
-        with storage.open("r", encoding="utf-8") as f:
-            config = json.load(f)
-        config.update(new_ids)
-        _backup(storage)
-        with storage.open("w", encoding="utf-8") as f:
-            json.dump(config, f, indent=4)
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        _backup(path)
+        for key in ("telemetry.devDeviceId", "telemetry.machineId", "telemetry.sqmId"):
+            data[key] = new_ids[key]
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
         return True
     except Exception as e:
-        print(f"[gravita] reset_machine: could not update storage.json – {e}")
+        print(f"[gravita] reset_machine: storage.json update failed – {e}")
         return False
 
 
-def _update_sqlite(db: Path, new_ids: dict) -> bool:
+def _update_sqlite(path: Path, new_ids: dict) -> bool:
     try:
-        conn = sqlite3.connect(str(db))
+        conn = sqlite3.connect(str(path))
         cur = conn.cursor()
         cur.execute(
             "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT)"
         )
-        for k, v in new_ids.items():
-            cur.execute(
-                "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)", (k, v)
-            )
+        cur.execute(
+            "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)",
+            ("storage.serviceMachineId", new_ids["storage.serviceMachineId"]),
+        )
         conn.commit()
         conn.close()
         return True
     except Exception as e:
-        print(f"[gravita] reset_machine: could not update state.vscdb – {e}")
+        print(f"[gravita] reset_machine: state.vscdb update failed – {e}")
         return False
 
 
-def _update_machineid_file(dev_device_id: str) -> bool:
-    path = _cursor_machineid_path()
+def _update_machineid(path: Path, new_id: str) -> bool:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
             _backup(path)
-        path.write_text(dev_device_id, encoding="utf-8")
+        path.write_text(new_id, encoding="utf-8")
         return True
     except Exception as e:
-        print(f"[gravita] reset_machine: could not update machineId file – {e}")
+        print(f"[gravita] reset_machine: machineid update failed – {e}")
         return False
 
 
 # ── public entry point ────────────────────────────────────────────────────────
 
-def reset_cursor_machine_id(verbose: bool = True) -> bool:
+def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     """
-    Generate fresh telemetry/machine IDs for Cursor IDE and write them to:
-      • storage.json
-      • state.vscdb  (SQLite)
-      • machineId    (plain text)
+    Rotate all Windsurf machine/telemetry IDs.
 
-    Returns True on success, False if Cursor data files are not found or
-    cannot be written (e.g. Cursor is not installed).
+    Returns True if storage.json was updated, False if Windsurf data is not
+    found or writes fail. Always safe to call – skips silently when Windsurf
+    is not installed.
     """
-    try:
-        storage = _cursor_storage_path()
-        db = _cursor_sqlite_path()
+    storage = _storage_json()
 
-        if not storage.exists():
-            if verbose:
-                print(
-                    f"[gravita] reset_machine: Cursor storage.json not found at "
-                    f"{storage} – skipping reset."
-                )
-            return False
-
+    if not storage.exists():
         if verbose:
-            print("[gravita] Resetting Cursor machine IDs …")
-
-        new_ids = _generate_ids()
-
-        ok_json = _update_storage_json(storage, new_ids)
-        ok_sqlite = _update_sqlite(db, new_ids) if db.exists() else True
-        ok_mid = _update_machineid_file(new_ids["telemetry.devDeviceId"])
-
-        if verbose:
-            if ok_json and ok_sqlite and ok_mid:
-                print("[gravita] Cursor machine IDs reset successfully.")
-            else:
-                print("[gravita] Cursor machine ID reset completed with some errors (see above).")
-
-        return ok_json
-
-    except Exception as e:
-        print(f"[gravita] reset_machine: unexpected error – {e}")
+            print(
+                f"[gravita] reset_machine: Windsurf storage.json not found "
+                f"({storage}) – skipping."
+            )
         return False
+
+    if verbose:
+        print("[gravita] Rotating Windsurf machine IDs …")
+
+    ids = _generate_ids()
+
+    ok_json   = _update_storage_json(storage, ids)
+    ok_sqlite = _update_sqlite(_state_db(), ids) if _state_db().exists() else True
+    ok_mid    = _update_machineid(_machineid_file(), ids["_machineid"])
+
+    if verbose:
+        if ok_json and ok_sqlite and ok_mid:
+            print("[gravita] Windsurf machine IDs rotated successfully.")
+        else:
+            print("[gravita] Windsurf machine ID rotation completed with some errors (see above).")
+
+    return ok_json
+
+
+# keep the old name as an alias so nothing else breaks
+reset_cursor_machine_id = reset_windsurf_machine_id

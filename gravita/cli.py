@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 
 from gravita import __version__
-from gravita.reset_machine import reset_cursor_machine_id
+from gravita.reset_machine import reset_windsurf_machine_id
 
 try:
     import curses
@@ -243,7 +243,7 @@ def main():
             return
         print(USAGE)
         return
-    reset_cursor_machine_id()   # reset Cursor IDE machine IDs before anything else
+    reset_windsurf_machine_id()   # rotate Windsurf machine IDs before anything else
     bootstrap()
     eng = Engine()
     try:
