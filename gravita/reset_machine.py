@@ -31,14 +31,15 @@ def _windsurf_base() -> Path:
     elif sys.platform.startswith("linux"):
         sudo_user = os.environ.get("SUDO_USER")
         home = Path(f"/home/{sudo_user}") if sudo_user else Path.home()
-        return home / ".config" / "cursor" / "User" / "globalStorage" / "storage.json"
+        return home / ".config" / "Windsurf"
+    elif sys.platform == "win32":
+        return Path(os.getenv("APPDATA", "")) / "Windsurf"
     else:
         raise OSError(f"Unsupported OS: {sys.platform}")
 
 
-def _cursor_sqlite_path() -> Path:
-    """Return the path to Cursor's state.vscdb SQLite database."""
-    return _cursor_storage_path().parent / "state.vscdb"
+def _storage_json() -> Path:
+    return _windsurf_base() / "User" / "globalStorage" / "storage.json"
 
 
 def _cursor_machineid_path() -> Path:
