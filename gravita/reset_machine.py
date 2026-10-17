@@ -46,7 +46,11 @@ def _state_db() -> Path:
     return _windsurf_base() / "User" / "globalStorage" / "state.vscdb"
 
 
-# ── core reset logic ──────────────────────────────────────────────────────────
+def _machineid_file() -> Path:
+    return _windsurf_base() / "machineid"
+
+
+# ── ID generation ─────────────────────────────────────────────────────────────
 
 def _generate_ids() -> dict:
     dev_device_id = str(uuid.uuid4())
