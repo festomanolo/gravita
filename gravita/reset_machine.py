@@ -59,3 +59,16 @@ def _generate_ids() -> dict:
         "telemetry.macMachineId": hashlib.sha512(os.urandom(64)).hexdigest(),
         "telemetry.sqmId": "{" + str(uuid.uuid4()).upper() + "}",
         "storage.serviceMachineId": dev_device_id,
+    }
+
+
+def _backup(path: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = path.with_suffix(f"{path.suffix}.bak.{stamp}")
+    shutil.copy2(path, dest)
+    return dest
+
+
+def _update_storage_json(storage: Path, new_ids: dict) -> bool:
+    try:
+        with storage.open("r", encoding="utf-8") as f:
