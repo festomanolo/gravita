@@ -1,18 +1,3 @@
-    dest = path.with_suffix(f"{path.suffix}.bak.{stamp}")
-    shutil.copy2(path, dest)
-
-
-def _update_storage_json(path: Path, new_ids: dict) -> bool:
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-        _backup(path)
-        for key in ("telemetry.devDeviceId", "telemetry.machineId", "telemetry.sqmId"):
-            data[key] = new_ids[key]
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        return True
-    except Exception as e:
         print(f"[gravita] reset_machine: storage.json update failed – {e}")
         return False
 
