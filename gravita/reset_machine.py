@@ -25,13 +25,9 @@ from pathlib import Path
 
 # ── path resolution ───────────────────────────────────────────────────────────
 
-def _cursor_storage_path() -> Path:
-    """Return the path to Cursor's storage.json for the current OS."""
-    if sys.platform == "win32":
-        appdata = os.getenv("APPDATA", "")
-        return Path(appdata) / "Cursor" / "User" / "globalStorage" / "storage.json"
-    elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Cursor" / "User" / "globalStorage" / "storage.json"
+def _windsurf_base() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Windsurf"
     elif sys.platform.startswith("linux"):
         sudo_user = os.environ.get("SUDO_USER")
         home = Path(f"/home/{sudo_user}") if sudo_user else Path.home()
