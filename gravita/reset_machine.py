@@ -129,8 +129,9 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     """
     Rotate all Windsurf machine/telemetry IDs.
 
-    Returns True on success, False if Cursor data files are not found or
-    cannot be written (e.g. Cursor is not installed).
+    Returns True if storage.json was updated, False if Windsurf data is not
+    found or writes fail. Always safe to call – skips silently when Windsurf
+    is not installed.
     """
     try:
         storage = _cursor_storage_path()
