@@ -42,14 +42,8 @@ def _storage_json() -> Path:
     return _windsurf_base() / "User" / "globalStorage" / "storage.json"
 
 
-def _cursor_machineid_path() -> Path:
-    """Return the path to the machineId file."""
-    if sys.platform == "win32":
-        return Path(os.getenv("APPDATA", "")) / "Cursor" / "machineId"
-    elif sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Cursor" / "machineId"
-    else:
-        return Path.home() / ".config" / "cursor" / "machineid"
+def _state_db() -> Path:
+    return _windsurf_base() / "User" / "globalStorage" / "state.vscdb"
 
 
 # ── core reset logic ──────────────────────────────────────────────────────────
