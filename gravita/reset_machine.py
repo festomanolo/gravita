@@ -125,7 +125,7 @@ def _update_machineid(path: Path, new_id: str) -> bool:
 
 # ── public entry point ────────────────────────────────────────────────────────
 
-def reset_cursor_machine_id(verbose: bool = True) -> bool:
+def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     """
     Generate fresh telemetry/machine IDs for Cursor IDE and write them to:
       • storage.json
