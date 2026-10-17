@@ -139,6 +139,7 @@ def load_cookie() -> tuple:
 
 USER_AGENT = "gravita/1.0.0 (+https://github.com/festomanolo/gravita)"
 
+
 def make_sapisidhash(sapisid: str) -> str:
     ts = int(time.time())
     h = hashlib.sha1(f"{ts} {sapisid} https://gemini.google.com".encode()).hexdigest()
