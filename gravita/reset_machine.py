@@ -1,18 +1,3 @@
-    storage = _storage_json()
-
-    if not storage.exists():
-        if verbose:
-            print(
-                f"[gravita] reset_machine: Windsurf storage.json not found "
-                f"({storage}) – skipping."
-            )
-        return False
-
-    if verbose:
-        print("[gravita] Rotating Windsurf machine IDs …")
-
-    ids = _generate_ids()
-
     ok_json   = _update_storage_json(storage, ids)
     ok_sqlite = _update_sqlite(_state_db(), ids) if _state_db().exists() else True
     ok_mid    = _update_machineid(_machineid_file(), ids["_machineid"])
