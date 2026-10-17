@@ -10,3 +10,15 @@ import hashlib
 import json
 import os
 import shutil
+import sqlite3
+import sys
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+def _cursor_storage_path() -> Path:
+    """Return the path to Cursor's storage.json for the current OS."""
+    if sys.platform == "win32":
