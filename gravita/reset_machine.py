@@ -1,18 +1,3 @@
-    return _windsurf_base() / "User" / "globalStorage" / "state.vscdb"
-
-
-def _machineid_file() -> Path:
-    return _windsurf_base() / "machineid"
-
-
-# ── ID generation ─────────────────────────────────────────────────────────────
-
-def _generate_ids() -> dict:
-    dev_device_id = str(uuid.uuid4())
-    machine_id = hashlib.sha256(os.urandom(32)).hexdigest()
-    sqm_id = "{" + str(uuid.uuid4()).upper() + "}"
-    service_machine_id = str(uuid.uuid4())
-    return {
         # storage.json keys
         "telemetry.devDeviceId": dev_device_id,
         "telemetry.machineId": machine_id,
