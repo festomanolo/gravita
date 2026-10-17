@@ -99,10 +99,10 @@ def _update_sqlite(path: Path, new_ids: dict) -> bool:
         cur.execute(
             "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT)"
         )
-        for k, v in new_ids.items():
-            cur.execute(
-                "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)", (k, v)
-            )
+        cur.execute(
+            "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)",
+            ("storage.serviceMachineId", new_ids["storage.serviceMachineId"]),
+        )
         conn.commit()
         conn.close()
         return True
