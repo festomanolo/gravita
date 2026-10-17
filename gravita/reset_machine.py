@@ -121,3 +121,16 @@ def reset_cursor_machine_id(verbose: bool = True) -> bool:
     """
     Generate fresh telemetry/machine IDs for Cursor IDE and write them to:
       • storage.json
+      • state.vscdb  (SQLite)
+      • machineId    (plain text)
+
+    Returns True on success, False if Cursor data files are not found or
+    cannot be written (e.g. Cursor is not installed).
+    """
+    try:
+        storage = _cursor_storage_path()
+        db = _cursor_sqlite_path()
+
+        if not storage.exists():
+            if verbose:
+                print(
