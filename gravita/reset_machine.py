@@ -1,18 +1,3 @@
-    elif sys.platform.startswith("linux"):
-        sudo_user = os.environ.get("SUDO_USER")
-        home = Path(f"/home/{sudo_user}") if sudo_user else Path.home()
-        return home / ".config" / "Windsurf"
-    elif sys.platform == "win32":
-        return Path(os.getenv("APPDATA", "")) / "Windsurf"
-    else:
-        raise OSError(f"Unsupported OS: {sys.platform}")
-
-
-def _storage_json() -> Path:
-    return _windsurf_base() / "User" / "globalStorage" / "storage.json"
-
-
-def _state_db() -> Path:
     return _windsurf_base() / "User" / "globalStorage" / "state.vscdb"
 
 
