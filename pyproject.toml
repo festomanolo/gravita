@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nolo-gravita"
+version = "1.0.0"
+description = "gravita: one command to run gemini-web2api, a free OpenAI-compatible API over Gemini web."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+authors = [{ name = "festomanolo" }]
+keywords = ["gemini", "openai", "api", "proxy", "llm", "tui", "gravita"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console :: Curses",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = ["httpx>=0.25"]
+
+[project.urls]
+Homepage = "https://github.com/festomanolo/gravita"
+Repository = "https://github.com/festomanolo/gravita"
+Issues = "https://github.com/festomanolo/gravita/issues"
+
+[project.scripts]
+gravita = "gravita.cli:main"
+
+[tool.setuptools]
+packages = ["gravita"]
+
+[tool.setuptools.package-data]
+gravita = ["engine/*.py", "engine/LICENSE"]
