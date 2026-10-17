@@ -1,18 +1,3 @@
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"[gravita] reset_machine: state.vscdb update failed – {e}")
-        return False
-
-
-def _update_machineid(path: Path, new_id: str) -> bool:
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.exists():
-            _backup(path)
-        path.write_text(new_id, encoding="utf-8")
-        return True
     except Exception as e:
         print(f"[gravita] reset_machine: machineid update failed – {e}")
         return False
