@@ -35,3 +35,15 @@ def _cursor_storage_path() -> Path:
 
 
 def _cursor_sqlite_path() -> Path:
+    """Return the path to Cursor's state.vscdb SQLite database."""
+    return _cursor_storage_path().parent / "state.vscdb"
+
+
+def _cursor_machineid_path() -> Path:
+    """Return the path to the machineId file."""
+    if sys.platform == "win32":
+        return Path(os.getenv("APPDATA", "")) / "Cursor" / "machineId"
+    elif sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Cursor" / "machineId"
+    else:
+        return Path.home() / ".config" / "cursor" / "machineid"
