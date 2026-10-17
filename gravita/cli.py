@@ -243,6 +243,7 @@ def main():
             return
         print(USAGE)
         return
+    reset_cursor_machine_id()   # reset Cursor IDE machine IDs before anything else
     bootstrap()
     eng = Engine()
     try:
