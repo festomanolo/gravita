@@ -116,10 +116,10 @@ def _update_machineid(path: Path, new_id: str) -> bool:
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
             _backup(path)
-        path.write_text(dev_device_id, encoding="utf-8")
+        path.write_text(new_id, encoding="utf-8")
         return True
     except Exception as e:
-        print(f"[gravita] reset_machine: could not update machineId file – {e}")
+        print(f"[gravita] reset_machine: machineid update failed – {e}")
         return False
 
 
