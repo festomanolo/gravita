@@ -354,7 +354,7 @@ def gemini_stream_generate_iter(prompt: str, model_id: int, think_mode: int, fil
         "Origin": "https://gemini.google.com",
         "Referer": f"https://gemini.google.com{prefix}/app",
         "X-Same-Domain": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": USER_AGENT,
     }
     if prefix:
         headers["X-Goog-AuthUser"] = str(CONFIG["auth_user"])
