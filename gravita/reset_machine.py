@@ -109,3 +109,15 @@ def _update_machineid_file(dev_device_id: str) -> bool:
         if path.exists():
             _backup(path)
         path.write_text(dev_device_id, encoding="utf-8")
+        return True
+    except Exception as e:
+        print(f"[gravita] reset_machine: could not update machineId file – {e}")
+        return False
+
+
+# ── public entry point ────────────────────────────────────────────────────────
+
+def reset_cursor_machine_id(verbose: bool = True) -> bool:
+    """
+    Generate fresh telemetry/machine IDs for Cursor IDE and write them to:
+      • storage.json
