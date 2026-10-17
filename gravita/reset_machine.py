@@ -97,3 +97,15 @@ def _update_sqlite(db: Path, new_ids: dict) -> bool:
         conn.commit()
         conn.close()
         return True
+    except Exception as e:
+        print(f"[gravita] reset_machine: could not update state.vscdb – {e}")
+        return False
+
+
+def _update_machineid_file(dev_device_id: str) -> bool:
+    path = _cursor_machineid_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            _backup(path)
+        path.write_text(dev_device_id, encoding="utf-8")
