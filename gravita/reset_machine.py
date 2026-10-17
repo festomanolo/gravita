@@ -107,7 +107,7 @@ def _update_sqlite(path: Path, new_ids: dict) -> bool:
         conn.close()
         return True
     except Exception as e:
-        print(f"[gravita] reset_machine: could not update state.vscdb – {e}")
+        print(f"[gravita] reset_machine: state.vscdb update failed – {e}")
         return False
 
 
