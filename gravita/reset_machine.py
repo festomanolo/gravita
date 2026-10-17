@@ -158,8 +158,8 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
         else:
             print("[gravita] Windsurf machine ID rotation completed with some errors (see above).")
 
-        return ok_json
+    return ok_json
 
-    except Exception as e:
-        print(f"[gravita] reset_machine: unexpected error – {e}")
-        return False
+
+# keep the old name as an alias so nothing else breaks
+reset_cursor_machine_id = reset_windsurf_machine_id
