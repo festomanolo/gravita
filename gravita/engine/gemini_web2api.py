@@ -243,7 +243,6 @@ def gemini_stream_generate(prompt: str, model_id: int, think_mode: int, file_ref
     inner[30] = [4]
     apply_chat_persistence_flags(inner)
     inner[53] = 0
-    inner[59] = str(uuid.uuid4())
     inner[61] = []
     inner[68] = 1
     inner[79] = model_id
