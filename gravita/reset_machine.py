@@ -94,7 +94,7 @@ def _update_storage_json(path: Path, new_ids: dict) -> bool:
 
 def _update_sqlite(path: Path, new_ids: dict) -> bool:
     try:
-        conn = sqlite3.connect(str(db))
+        conn = sqlite3.connect(str(path))
         cur = conn.cursor()
         cur.execute(
             "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT)"
