@@ -111,8 +111,7 @@ def _update_sqlite(path: Path, new_ids: dict) -> bool:
         return False
 
 
-def _update_machineid_file(dev_device_id: str) -> bool:
-    path = _cursor_machineid_path()
+def _update_machineid(path: Path, new_id: str) -> bool:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
