@@ -72,3 +72,15 @@ def _backup(path: Path) -> Path:
 def _update_storage_json(storage: Path, new_ids: dict) -> bool:
     try:
         with storage.open("r", encoding="utf-8") as f:
+            config = json.load(f)
+        config.update(new_ids)
+        _backup(storage)
+        with storage.open("w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
+        return True
+    except Exception as e:
+        print(f"[gravita] reset_machine: could not update storage.json – {e}")
+        return False
+
+
+def _update_sqlite(db: Path, new_ids: dict) -> bool:
