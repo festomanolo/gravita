@@ -77,7 +77,7 @@ def _backup(path: Path) -> None:
     shutil.copy2(path, dest)
 
 
-def _update_storage_json(storage: Path, new_ids: dict) -> bool:
+def _update_storage_json(path: Path, new_ids: dict) -> bool:
     try:
         with storage.open("r", encoding="utf-8") as f:
             config = json.load(f)
