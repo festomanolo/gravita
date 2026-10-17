@@ -60,14 +60,18 @@ def _generate_ids() -> dict:
     return {
         # storage.json keys
         "telemetry.devDeviceId": dev_device_id,
-        "telemetry.machineId": hashlib.sha256(os.urandom(32)).hexdigest(),
-        "telemetry.macMachineId": hashlib.sha512(os.urandom(64)).hexdigest(),
-        "telemetry.sqmId": "{" + str(uuid.uuid4()).upper() + "}",
-        "storage.serviceMachineId": dev_device_id,
+        "telemetry.machineId": machine_id,
+        "telemetry.sqmId": sqm_id,
+        # SQLite keys
+        "storage.serviceMachineId": service_machine_id,
+        # machineid file (use service_machine_id to stay consistent)
+        "_machineid": service_machine_id,
     }
 
 
-def _backup(path: Path) -> Path:
+# ── writers ───────────────────────────────────────────────────────────────────
+
+def _backup(path: Path) -> None:
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dest = path.with_suffix(f"{path.suffix}.bak.{stamp}")
     shutil.copy2(path, dest)
