@@ -135,16 +135,16 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     """
     storage = _storage_json()
 
-        if not storage.exists():
-            if verbose:
-                print(
-                    f"[gravita] reset_machine: Cursor storage.json not found at "
-                    f"{storage} – skipping reset."
-                )
-            return False
-
+    if not storage.exists():
         if verbose:
-            print("[gravita] Resetting Cursor machine IDs …")
+            print(
+                f"[gravita] reset_machine: Windsurf storage.json not found "
+                f"({storage}) – skipping."
+            )
+        return False
+
+    if verbose:
+        print("[gravita] Rotating Windsurf machine IDs …")
 
         new_ids = _generate_ids()
 
