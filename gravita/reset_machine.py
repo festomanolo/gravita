@@ -133,9 +133,7 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     found or writes fail. Always safe to call – skips silently when Windsurf
     is not installed.
     """
-    try:
-        storage = _cursor_storage_path()
-        db = _cursor_sqlite_path()
+    storage = _storage_json()
 
         if not storage.exists():
             if verbose:
