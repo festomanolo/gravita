@@ -242,7 +242,6 @@ def main():
             return
         print(USAGE)
         return
-    reset_windsurf_machine_id()   # rotate Windsurf machine IDs before anything else
     bootstrap()
     eng = Engine()
     try:
