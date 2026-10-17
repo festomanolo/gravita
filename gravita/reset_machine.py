@@ -134,3 +134,15 @@ def reset_cursor_machine_id(verbose: bool = True) -> bool:
         if not storage.exists():
             if verbose:
                 print(
+                    f"[gravita] reset_machine: Cursor storage.json not found at "
+                    f"{storage} – skipping reset."
+                )
+            return False
+
+        if verbose:
+            print("[gravita] Resetting Cursor machine IDs …")
+
+        new_ids = _generate_ids()
+
+        ok_json = _update_storage_json(storage, new_ids)
+        ok_sqlite = _update_sqlite(db, new_ids) if db.exists() else True
