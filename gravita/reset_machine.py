@@ -84,3 +84,16 @@ def _update_storage_json(storage: Path, new_ids: dict) -> bool:
 
 
 def _update_sqlite(db: Path, new_ids: dict) -> bool:
+    try:
+        conn = sqlite3.connect(str(db))
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT)"
+        )
+        for k, v in new_ids.items():
+            cur.execute(
+                "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)", (k, v)
+            )
+        conn.commit()
+        conn.close()
+        return True
