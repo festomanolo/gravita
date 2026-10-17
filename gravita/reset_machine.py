@@ -146,7 +146,7 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     if verbose:
         print("[gravita] Rotating Windsurf machine IDs …")
 
-        new_ids = _generate_ids()
+    ids = _generate_ids()
 
         ok_json = _update_storage_json(storage, new_ids)
         ok_sqlite = _update_sqlite(db, new_ids) if db.exists() else True
