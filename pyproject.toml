@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nolo-gravita"
-version = "1.0.0"
+version = "1.1.0"
 description = "gravita: one command to run gemini-web2api, a free OpenAI-compatible API over Gemini web."
 readme = "README.md"
 license = { text = "MIT" }
