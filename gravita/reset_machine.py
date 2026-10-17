@@ -1,18 +1,3 @@
-import json
-import os
-import shutil
-import sqlite3
-import sys
-import uuid
-from datetime import datetime
-from pathlib import Path
-
-
-# ── path resolution ───────────────────────────────────────────────────────────
-
-def _windsurf_base() -> Path:
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Windsurf"
     elif sys.platform.startswith("linux"):
         sudo_user = os.environ.get("SUDO_USER")
         home = Path(f"/home/{sudo_user}") if sudo_user else Path.home()
