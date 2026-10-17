@@ -88,11 +88,11 @@ def _update_storage_json(path: Path, new_ids: dict) -> bool:
             json.dump(data, f, indent=2)
         return True
     except Exception as e:
-        print(f"[gravita] reset_machine: could not update storage.json – {e}")
+        print(f"[gravita] reset_machine: storage.json update failed – {e}")
         return False
 
 
-def _update_sqlite(db: Path, new_ids: dict) -> bool:
+def _update_sqlite(path: Path, new_ids: dict) -> bool:
     try:
         conn = sqlite3.connect(str(db))
         cur = conn.cursor()
