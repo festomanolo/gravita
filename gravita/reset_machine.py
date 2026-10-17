@@ -146,3 +146,16 @@ def reset_cursor_machine_id(verbose: bool = True) -> bool:
 
         ok_json = _update_storage_json(storage, new_ids)
         ok_sqlite = _update_sqlite(db, new_ids) if db.exists() else True
+        ok_mid = _update_machineid_file(new_ids["telemetry.devDeviceId"])
+
+        if verbose:
+            if ok_json and ok_sqlite and ok_mid:
+                print("[gravita] Cursor machine IDs reset successfully.")
+            else:
+                print("[gravita] Cursor machine ID reset completed with some errors (see above).")
+
+        return ok_json
+
+    except Exception as e:
+        print(f"[gravita] reset_machine: unexpected error – {e}")
+        return False
