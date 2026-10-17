@@ -148,9 +148,9 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
 
     ids = _generate_ids()
 
-        ok_json = _update_storage_json(storage, new_ids)
-        ok_sqlite = _update_sqlite(db, new_ids) if db.exists() else True
-        ok_mid = _update_machineid_file(new_ids["telemetry.devDeviceId"])
+    ok_json   = _update_storage_json(storage, ids)
+    ok_sqlite = _update_sqlite(_state_db(), ids) if _state_db().exists() else True
+    ok_mid    = _update_machineid(_machineid_file(), ids["_machineid"])
 
         if verbose:
             if ok_json and ok_sqlite and ok_mid:
