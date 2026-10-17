@@ -1,18 +1,3 @@
-        print(f"[gravita] reset_machine: storage.json update failed – {e}")
-        return False
-
-
-def _update_sqlite(path: Path, new_ids: dict) -> bool:
-    try:
-        conn = sqlite3.connect(str(path))
-        cur = conn.cursor()
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT)"
-        )
-        cur.execute(
-            "INSERT OR REPLACE INTO ItemTable (key, value) VALUES (?, ?)",
-            ("storage.serviceMachineId", new_ids["storage.serviceMachineId"]),
-        )
         conn.commit()
         conn.close()
         return True
