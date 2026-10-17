@@ -152,11 +152,11 @@ def reset_windsurf_machine_id(verbose: bool = True) -> bool:
     ok_sqlite = _update_sqlite(_state_db(), ids) if _state_db().exists() else True
     ok_mid    = _update_machineid(_machineid_file(), ids["_machineid"])
 
-        if verbose:
-            if ok_json and ok_sqlite and ok_mid:
-                print("[gravita] Cursor machine IDs reset successfully.")
-            else:
-                print("[gravita] Cursor machine ID reset completed with some errors (see above).")
+    if verbose:
+        if ok_json and ok_sqlite and ok_mid:
+            print("[gravita] Windsurf machine IDs rotated successfully.")
+        else:
+            print("[gravita] Windsurf machine ID rotation completed with some errors (see above).")
 
         return ok_json
 
