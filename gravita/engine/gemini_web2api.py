@@ -137,6 +137,9 @@ def load_cookie() -> tuple:
         return "", None
 
 
+USER_AGENT = "gravita/1.0.0 (+https://github.com/festomanolo/gravita)"
+
+
 def make_sapisidhash(sapisid: str) -> str:
     ts = int(time.time())
     h = hashlib.sha1(f"{ts} {sapisid} https://gemini.google.com".encode()).hexdigest()
@@ -165,7 +168,7 @@ def fetch_latest_bl() -> Optional[str]:
     try:
         req = urllib.request.Request(
             "https://gemini.google.com/app",
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+            headers={"User-Agent": USER_AGENT})
         ctx = ssl.create_default_context()
         proxy = CONFIG.get("proxy")
         if proxy:
@@ -240,7 +243,6 @@ def gemini_stream_generate(prompt: str, model_id: int, think_mode: int, file_ref
     inner[30] = [4]
     apply_chat_persistence_flags(inner)
     inner[53] = 0
-    inner[59] = str(uuid.uuid4())
     inner[61] = []
     inner[68] = 1
     inner[79] = model_id
@@ -262,7 +264,7 @@ def gemini_stream_generate(prompt: str, model_id: int, think_mode: int, file_ref
         "Origin": "https://gemini.google.com",
         "Referer": f"https://gemini.google.com{prefix}/app",
         "X-Same-Domain": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": USER_AGENT,
     }
     if prefix:
         headers["X-Goog-AuthUser"] = str(CONFIG["auth_user"])
@@ -331,7 +333,6 @@ def gemini_stream_generate_iter(prompt: str, model_id: int, think_mode: int, fil
     inner[30] = [4]
     apply_chat_persistence_flags(inner)
     inner[53] = 0
-    inner[59] = str(uuid.uuid4())
     inner[61] = []
     inner[68] = 1
     inner[79] = model_id
@@ -353,7 +354,7 @@ def gemini_stream_generate_iter(prompt: str, model_id: int, think_mode: int, fil
         "Origin": "https://gemini.google.com",
         "Referer": f"https://gemini.google.com{prefix}/app",
         "X-Same-Domain": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": USER_AGENT,
     }
     if prefix:
         headers["X-Goog-AuthUser"] = str(CONFIG["auth_user"])
