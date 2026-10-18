@@ -8,7 +8,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from gravita import __version__
+from gravita import __version__, agy
 
 try:
     import curses
@@ -58,7 +58,26 @@ class Engine:
         self.started = 0.0
         self.ready = False
         self.test = ""
+        self.checks = []
+        self.busy = ""
         threading.Thread(target=self._poll, daemon=True).start()
+        threading.Thread(target=self._health, daemon=True).start()
+
+    def _health(self):
+        while True:
+            if not self.busy:
+                self.checks = agy.checks(load(), self.ready)
+            time.sleep(4)
+
+    def install_gravitas(self):
+        def work():
+            self.busy = "installing Gravitas into agy..."
+            path = agy.find_agy()
+            ok, text = agy.install(path) if path else (False, "agy not found")
+            self.busy = ""
+            self.checks = agy.checks(load(), self.ready)
+            self.test = ("gravitas: " if ok else "gravitas install failed: ") + text
+        threading.Thread(target=work, daemon=True).start()
 
     def running(self):
         return self.p is not None and self.p.poll() is None
@@ -183,11 +202,23 @@ def ui(scr, eng):
         put(4, 2, f"Model     {cfg['default_model']}   cookie: {'yes' if cfg['cookie_file'] else 'no'}"
                   f"   proxy: {cfg['proxy'] or 'no'}")
         put(5, 2, eng.test)
-        put(7, 2, "── engine log " + "─" * max(0, w - 20), curses.A_DIM)
-        for i, line in enumerate(tail(max(1, h - 12))):
-            put(8 + i, 2, line)
+        put(7, 2, "── health " + "─" * max(0, w - 14), curses.A_DIM)
+        marks = {agy.OK: ("✔", 1), agy.WARN: ("!", 2), agy.FAIL: ("✖", 3)}
+        for i, (label, st, detail, fix) in enumerate(eng.checks):
+            mark, col = marks[st]
+            put(8 + i, 2, mark, curses.color_pair(col) | curses.A_BOLD)
+            put(8 + i, 4, f"{label:<18}{detail}")
+            if fix:
+                put(8 + i, 4 + 18 + len(detail) + 2, "→ " + fix, curses.A_DIM)
+        row = 8 + len(eng.checks)
+        todo = next((c for c in eng.checks if c[1] == agy.FAIL), None)
+        nxt = eng.busy or (f"Next: {todo[0]} - {todo[3] or todo[2]}" if todo else "All set. agy is ready.")
+        put(row, 2, nxt, curses.A_BOLD)
+        put(row + 2, 2, "── engine log " + "─" * max(0, w - 20), curses.A_DIM)
+        for i, line in enumerate(tail(max(0, h - row - 7))):
+            put(row + 3 + i, 2, line)
         put(h - 3, 2, msg, curses.A_BOLD)
-        put(h - 1, 1, "[s]tart/stop [r]estart [t]est [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
+        put(h - 1, 1, "[s]tart/stop [r]estart [t]est [i]nstall-gravitas [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
         scr.refresh()
 
         ch = scr.getch()
@@ -212,6 +243,9 @@ def ui(scr, eng):
                 eng.run_test()
             else:
                 msg = "engine not ready - start it first"
+        elif k == "i":
+            eng.install_gravitas()
+            msg = "installing Gravitas..."
         elif k == "k":
             reveal = not reveal
         elif k == "c":
@@ -229,18 +263,43 @@ def ui(scr, eng):
             msg = "proxy saved - press r to apply"
 
 
-USAGE = """usage: gravita [--version] [--help]
+USAGE = """usage: gravita [--version] [--help] [setup | doctor | agy [agy args...]]
 
-Opens the gravita terminal UI and starts the engine.
-Engine listens on http://127.0.0.1:8081/v1. Keys: s r t k c p q."""
+  (no args)  open the terminal UI and start the engine (Gravitas health + onboarding shown)
+  setup      install the Gravitas plugin into agy so it loads on every session
+  doctor     print the health checklist and exit non-zero if something is broken
+  agy ...    launch agy routed through the gravita API (prints which backend it uses)
+Engine listens on http://127.0.0.1:8081/v1. Keys: s r t i k c p q."""
 
 
 def main():
     if len(sys.argv) > 1:
-        if sys.argv[1] in ("-V", "--version"):
+        cmd = sys.argv[1]
+        if cmd in ("-V", "--version"):
             print(f"gravita {__version__}")
-            return
-        print(USAGE)
+        elif cmd == "setup":
+            path = agy.find_agy()
+            ok, text = agy.install(path) if path else (False, "agy not found")
+            print(("ok: " if ok else "failed: ") + text)
+            sys.exit(0 if ok else 1)
+        elif cmd == "doctor":
+            bootstrap()
+            cfg = load()
+            try:
+                with OPENER.open(urllib.request.Request(
+                        f"http://127.0.0.1:{cfg['port']}/v1/models", headers=auth(cfg)), timeout=2) as r:
+                    up = r.status == 200
+            except Exception:
+                up = False
+            rows = agy.checks(cfg, up)
+            for label, st, detail, fix in rows:
+                print(f"{ {'ok': '✔', 'warn': '!', 'fail': '✖'}[st] } {label:<18}{detail}" + (f"  -> {fix}" if fix else ""))
+            sys.exit(1 if any(r[1] == agy.FAIL for r in rows) else 0)
+        elif cmd == "agy":
+            bootstrap()
+            agy.launch(load(), sys.argv[2:])
+        else:
+            print(USAGE)
         return
     bootstrap()
     eng = Engine()

@@ -117,6 +117,23 @@ export GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8081
 gemini
 ```
 
+## Antigravity CLI (agy) + Gravitas
+
+gravita bundles [Gravitas](https://github.com/udaysharmadev/Gravitas) (MIT), a reliability layer for coding
+agents, as an `agy` plugin. Once installed it loads on every agy session (read-before-edit, scoped writes,
+evidence before "done").
+
+```bash
+gravita setup     # install the Gravitas plugin into agy (also: press i in the dashboard)
+gravita doctor    # print the health checklist; non-zero exit if something is broken
+gravita agy ...   # launch agy with GEMINI_API_KEY / GOOGLE_GEMINI_BASE_URL pointed at gravita
+```
+
+The dashboard has a **health** panel (engine, agy, python3, Gravitas plugin, which backend agy would use,
+Pro cookie) and a **Next:** line that tells you the first thing to fix. The backend row reflects the
+environment of the shell that started gravita; it cannot see how an already-running agy was started.
+Bundled Gravitas snapshot: upstream commit `f76b0d9`.
+
 ## Models
 
 | Model | Best for | Output |
