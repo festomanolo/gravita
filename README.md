@@ -127,6 +127,7 @@ evidence before "done").
 gravita setup     # install the Gravitas plugin into agy (also: press i in the dashboard)
 gravita doctor    # print the health checklist; non-zero exit if something is broken
 gravita onboard   # replay the first-run guide (shown automatically on first launch)
+gravita gemini    # Gemini CLI on the gravita API, Gravitas skills preloaded (starts/stops the engine for you)
 gravita agy ...   # launch agy; prints that it uses its own account + the Gravitas plugin state
 ```
 
@@ -140,6 +141,24 @@ Heads-up (tested): with the plugin on and no Gravitas task contract, agy is bloc
 commands and writing files. Start tasks with e.g. "Use Gravitas to fix this bug", or press `g` to turn it off.
 
 Bundled Gravitas snapshot: upstream commit `f76b0d9`.
+
+## Gemini CLI on the gravita API (this one really uses web2api)
+
+`agy` ignores custom endpoints, but Google's `gemini` CLI honors `GOOGLE_GEMINI_BASE_URL`. `gravita gemini`:
+
+- installs the Gemini CLI privately under `~/.gravita/tools` (nothing global; your own `~/.gemini` is untouched),
+- runs it in an isolated home with the Gravitas skills and rules **preloaded**, a pinned model, and your gravita key,
+- starts the engine if needed and stops it when you exit.
+
+```bash
+gravita gemini                                   # interactive
+gravita gemini --yolo -p "fix the failing test"  # headless, auto-approve tools
+```
+
+Tested: a headless task that creates `fizz.py` and runs it, with real tool calls. The vendored engine was extended
+for this: unknown Gemini model names map to the nearest served model, native `functionCall`/`functionResponse`
+and JSON mode are supported, and tool calls missing required arguments are retried once. Expect slower, less
+reliable agent behavior than a native Gemini API: it is the consumer web model with tools emulated in the prompt.
 
 ## Models
 

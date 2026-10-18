@@ -531,7 +531,7 @@ def messages_to_prompt(messages: list, tools: list = None) -> tuple:
                 "parameters": fn.get("parameters", tool.get("parameters", {})),
             })
         if tool_defs:
-            tools_json = json.dumps(tool_defs, indent=2)
+            tools_json = json.dumps(tool_defs, separators=(",", ":"))  # compact: keep full schemas under the limit
             if len(tools_json) > PROMPT_MAX_BYTES // 2:
                 slim_defs = [{"name": t["name"], "description": t["description"]} for t in tool_defs]
                 tools_json = json.dumps(slim_defs, indent=2)
@@ -540,7 +540,10 @@ def messages_to_prompt(messages: list, tools: list = None) -> tuple:
                 "[System instruction]: You have access to tools. "
                 "To call a tool, respond with:\n"
                 '```tool_call\n{"name": "func_name", "arguments": {...}}\n```\n'
-                "Only use tool_call blocks when needed.\n\n"
+                "Rules: you cannot create files, run code or browse yourself - ONLY a tool_call can do that. "
+                "Always fill every required argument. After a tool_call block, STOP and wait: the tool result "
+                "arrives in the next message, so never invent, predict or summarise a result before it does. "
+                "Do not say an action is done until its tool result confirms it.\n\n"
                 f"Available tools:\n{tools_json}"
             )
     for msg in messages:
@@ -578,10 +581,62 @@ def messages_to_prompt(messages: list, tools: list = None) -> tuple:
     return "\n\n".join(p for p in parts if p), images
 
 
+def json_mode_schema(req: dict):
+    """Return (wanted, schema) when the request asks for structured JSON output."""
+    gen = req.get("generationConfig") or {}
+    schema = gen.get("responseJsonSchema") or gen.get("responseSchema")
+    return (gen.get("responseMimeType") == "application/json" or bool(schema)), schema
+
+
+def extract_json(text: str) -> str:
+    """Pull the first JSON object/array out of model prose (fences and chatter stripped)."""
+    text = re.sub(r"```(?:json)?", "", text)
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch in "{[":
+            try:
+                obj, _ = decoder.raw_decode(text[i:])
+                return json.dumps(obj, ensure_ascii=False)
+            except ValueError:
+                continue
+    return text.strip()
+
+
+def missing_required(tool_calls: list, req: dict) -> list:
+    """Names of required arguments that tool calls left out, e.g. ['run_shell_command.command']."""
+    required = {}
+    for tool in req.get("tools") or []:
+        for fn in tool.get("functionDeclarations") or []:
+            schema = fn.get("parameters") or fn.get("parametersJsonSchema") or {}
+            required[fn.get("name")] = schema.get("required") or []
+    missing = []
+    for tc in tool_calls or []:
+        args = json.loads(tc["function"]["arguments"])
+        missing += [f"{tc['function']['name']}.{k}" for k in required.get(tc["function"]["name"], []) if k not in args]
+    return missing
+
+
+def google_tool_defs(req: dict) -> list:
+    """Flatten Google `tools[].functionDeclarations[]` into [{name, description, parameters}]."""
+    defs = []
+    for tool in req.get("tools") or []:
+        for fn in tool.get("functionDeclarations") or []:
+            defs.append({
+                "name": fn.get("name", ""),
+                "description": fn.get("description", ""),
+                "parameters": fn.get("parameters") or fn.get("parametersJsonSchema") or {},
+            })
+    return defs
+
+
 def google_contents_to_prompt(req: dict) -> tuple:
     """Convert Google API contents to (prompt_str, images_list)."""
     parts = []
     images = []
+
+    tools_block = messages_to_prompt([], google_tool_defs(req))[0]
+    if tools_block:
+        parts.append(tools_block)
 
     sys_inst = req.get("systemInstruction")
     if sys_inst:
@@ -597,6 +652,14 @@ def google_contents_to_prompt(req: dict) -> tuple:
         for part in content.get("parts", []):
             if part.get("text"):
                 text_parts.append(part["text"])
+            elif part.get("functionCall"):
+                call = part["functionCall"]
+                text_parts.append('```tool_call\n' + json.dumps(
+                    {"name": call.get("name"), "arguments": call.get("args", {})}, ensure_ascii=False) + '\n```')
+            elif part.get("functionResponse"):
+                resp = part["functionResponse"]
+                text_parts.append(f"[Tool result for {resp.get('name', '')}]: "
+                                  + json.dumps(resp.get("response", {}), ensure_ascii=False))
             elif part.get("inlineData"):
                 data = part["inlineData"]
                 try:
@@ -712,6 +775,9 @@ class GeminiHandler(BaseHTTPRequestHandler):
                 self.handle_chat(body)
             elif self.path == "/v1/responses":
                 self.handle_responses(body)
+            elif ":countTokens" in self.path:
+                prompt, _ = google_contents_to_prompt(json.loads(body or b"{}"))
+                self.send_json({"totalTokens": max(1, len(prompt) // 4)})
             elif ":streamGenerateContent" in self.path:
                 self._handle_google_generate(body, stream=True)
             elif ":generateContent" in self.path:
@@ -759,6 +825,14 @@ class GeminiHandler(BaseHTTPRequestHandler):
             model_name, think_str = model_name.rsplit("@think=", 1)
             think_override = int(think_str)
         cfg = MODELS.get(model_name)
+        if not cfg and model_name.startswith("gemini"):
+            # clients like the Gemini CLI ask for names we do not serve (e.g. gemini-3.1-pro-preview)
+            lowered = model_name.lower()
+            model_name = ("gemini-flash-lite" if "lite" in lowered else
+                          "gemini-3.1-pro" if "pro" in lowered else
+                          "gemini-3.5-flash-thinking" if "thinking" in lowered else
+                          CONFIG["default_model"] if CONFIG.get("default_model") in MODELS else "gemini-3.6-flash")
+            cfg = MODELS[model_name]
         if not cfg:
             return None, None, None, f"Unknown model: {model_name}"
         return model_name, cfg["mode"], (think_override if think_override is not None else cfg["think"]), None
@@ -1010,15 +1084,36 @@ class GeminiHandler(BaseHTTPRequestHandler):
             self.send_json({"error": {"message": "empty content"}}, 400)
             return
 
+        want_json, schema = json_mode_schema(req)
+        if want_json:
+            prompt += ("\n\n[System instruction]: Respond with ONLY a valid JSON value, no prose and no code fences."
+                       + (f" It must match this JSON schema:\n{json.dumps(schema)}" if schema else ""))
+
         try:
             file_refs = upload_images(images)
-            text, _ = self._call_gemini(prompt, model_id, think_mode, None, file_refs)
+            text, tool_calls = self._call_gemini(
+                prompt, model_id, think_mode, google_tool_defs(req) or None, file_refs)
+            gaps = missing_required(tool_calls, req)
+            if gaps:  # the web model sometimes calls a tool with empty arguments; ask once more
+                log(f"tool call missing {gaps}; retrying once")
+                text, tool_calls = self._call_gemini(
+                    prompt + "\n\n[System instruction]: your previous tool_call was missing required "
+                    f"arguments ({', '.join(gaps)}). Call the tool again with EVERY required argument filled in.",
+                    model_id, think_mode, google_tool_defs(req) or None, file_refs)
         except Exception as e:
             self.send_json({"error": {"message": f"upstream error: {e}"}}, 502)
             return
 
+        if want_json and text:
+            text = extract_json(text)
+        if tool_calls:
+            text = ""  # prose beside a tool call is a guess at a result that has not happened yet
+        out_parts = [{"text": text}] if text or not tool_calls else []
+        for tc in tool_calls or []:
+            out_parts.append({"functionCall": {
+                "name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}})
         candidate = {
-            "content": {"parts": [{"text": text or ""}], "role": "model"},
+            "content": {"parts": out_parts, "role": "model"},
             "finishReason": "STOP",
             "index": 0,
         }

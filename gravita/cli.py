@@ -10,7 +10,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from gravita import __version__, agy
+from gravita import __version__, agy, gemini
 
 try:
     import curses
@@ -71,7 +71,7 @@ class Engine:
     def _health(self):
         while True:
             if not self.busy:
-                self.checks = agy.checks(load(), self.ready)
+                self.checks = agy.checks(load(), self.ready) + gemini.checks(load())
             time.sleep(4)
 
     def toggle_gravitas(self):
@@ -85,13 +85,24 @@ class Engine:
             self.test = "gravitas: " + text
         threading.Thread(target=work, daemon=True).start()
 
+    def setup_gemini(self):
+        def work():
+            self.busy = "setting up Gemini CLI + Gravitas skills..."
+            ok, text = (True, "already installed") if gemini.find_gemini() else gemini.install_cli()
+            if ok:
+                gemini.prepare_home()
+            self.busy = ""
+            self.checks = agy.checks(load(), self.ready) + gemini.checks(load())
+            self.test = ("gemini: " if ok else "gemini setup failed: ") + text
+        threading.Thread(target=work, daemon=True).start()
+
     def install_gravitas(self):
         def work():
             self.busy = "installing Gravitas into agy..."
             path = agy.find_agy()
             ok, text = agy.install(path) if path else (False, "agy not found")
             self.busy = ""
-            self.checks = agy.checks(load(), self.ready)
+            self.checks = agy.checks(load(), self.ready) + gemini.checks(load())
             self.test = ("gravitas: " if ok else "gravitas install failed: ") + text
         threading.Thread(target=work, daemon=True).start()
 
@@ -229,7 +240,9 @@ PAGES = [
         "  2. Installs Gravitas into the Antigravity CLI (agy) as a plugin.",
         "",
         "Important: agy does NOT use the gravita API. Tested: it ignores custom endpoints",
-        "and always runs on its own signed-in account. The API is for your other apps.",
+        "and always runs on its own signed-in account.",
+        "To use the gravita API with an agent, run  gravita gemini  (the Gemini CLI, which",
+        "does honor a custom endpoint) - Gravitas skills come preloaded. Press m to set it up.",
     ]),
     ("Setup checklist", None),
     ("How Gravitas behaves in agy", [
@@ -244,10 +257,11 @@ PAGES = [
     ]),
     ("You're set", [
         "Dashboard keys:  s start/stop   r restart   t test   i install Gravitas",
-        "                 g Gravitas on/off   o this guide   k key   c cookie   p proxy",
+        "                 g Gravitas on/off   m Gemini CLI   o guide   k key   c cookie   p proxy",
         "",
         "Terminal:  gravita doctor   print the health checklist",
         "           gravita setup    install/repair the Gravitas plugin",
+        "           gravita gemini   Gemini CLI on the gravita API, Gravitas skills preloaded",
         "           gravita onboard  show this guide again",
     ]),
 ]
@@ -357,7 +371,7 @@ def ui(scr, eng):
             put(row + 3 + i, 2, line)
         put(h - 3, 2, eng.blocked or ("" if eng.ready and msg == "engine starting" else msg),
             curses.A_BOLD | (curses.color_pair(3) if eng.blocked else 0))
-        put(h - 1, 1, "[s]tart/stop [r]estart [t]est [i]nstall Gravitas  [g] on/off  [o]nboarding [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
+        put(h - 1, 1, "[s]tart/stop [r]estart [t]est [i]nstall Gravitas  [g] on/off  [m] gemini [o]nboarding [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
         scr.refresh()
 
         ch = scr.getch()
@@ -385,6 +399,9 @@ def ui(scr, eng):
         elif k == "g":
             eng.toggle_gravitas()
             msg = "toggling Gravitas..."
+        elif k == "m":
+            eng.setup_gemini()
+            msg = "setting up Gemini CLI..."
         elif k == "o":
             onboarding(scr, eng)
         elif k == "i":
@@ -407,6 +424,27 @@ def ui(scr, eng):
             msg = "proxy saved - press r to apply"
 
 
+def run_gemini(argv):
+    """Ensure the engine is up (starting and later stopping it if we own it), then run the Gemini CLI."""
+    eng = Engine()
+    eng.start()
+    if eng.blocked:
+        print("gravita: " + eng.blocked, file=sys.stderr)
+        return 1
+    print("gravita: waiting for the engine...", file=sys.stderr)
+    deadline = time.time() + 90
+    while not eng.ready and time.time() < deadline:
+        time.sleep(0.5)
+    if not eng.ready:
+        eng.stop()
+        print(f"gravita: engine did not become ready - see {LOG}", file=sys.stderr)
+        return 1
+    try:
+        return gemini.run(load(), argv)
+    finally:
+        eng.stop()
+
+
 def onboard_standalone(scr):
     curses.start_color()
     curses.use_default_colors()
@@ -415,11 +453,12 @@ def onboard_standalone(scr):
     onboarding(scr, Engine())
 
 
-USAGE = """usage: gravita [--version] [--help] [setup | doctor | onboard | agy [agy args...]]
+USAGE = """usage: gravita [--version] [--help] [setup | doctor | onboard | gemini [args...] | agy [agy args...]]
 
   (no args)  open the terminal UI and start the engine (Gravitas health + onboarding shown)
   setup      install the Gravitas plugin into agy so it loads on every session
   doctor     print the health checklist and exit non-zero if something is broken
+  gemini ... run the Gemini CLI on the gravita API with Gravitas skills preloaded
   agy ...    launch agy and print which backend and plugin state it runs with
 Engine listens on http://127.0.0.1:8081/v1. Keys: s r t i k c p q."""
 
@@ -443,13 +482,16 @@ def main():
                     up = r.status == 200
             except Exception:
                 up = False
-            rows = agy.checks(cfg, up)
+            rows = agy.checks(cfg, up) + gemini.checks(cfg)
             for label, st, detail, fix in rows:
                 print(f"{ {'ok': '✔', 'warn': '!', 'fail': '✖'}[st] } {label:<18}{detail}" + (f"  -> {fix}" if fix else ""))
             sys.exit(1 if any(r[1] == agy.FAIL for r in rows) else 0)
         elif cmd == "onboard":
             bootstrap()
             curses.wrapper(onboard_standalone)
+        elif cmd == "gemini":
+            bootstrap()
+            sys.exit(run_gemini(sys.argv[2:]))
         elif cmd == "agy":
             bootstrap()
             agy.launch(load(), sys.argv[2:])
