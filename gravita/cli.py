@@ -1,10 +1,12 @@
 """gravita terminal UI: start, watch and talk to the local Gemini-to-OpenAI engine."""
 import json
 import secrets
+import socket
 import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -60,6 +62,8 @@ class Engine:
         self.test = ""
         self.checks = []
         self.busy = ""
+        self.external = False   # adopted an engine we did not spawn; never kill it
+        self.blocked = ""       # port held by something that is not a usable engine
         threading.Thread(target=self._poll, daemon=True).start()
         threading.Thread(target=self._health, daemon=True).start()
 
@@ -80,12 +84,37 @@ class Engine:
         threading.Thread(target=work, daemon=True).start()
 
     def running(self):
-        return self.p is not None and self.p.poll() is None
+        return self.external or (self.p is not None and self.p.poll() is None)
+
+    def probe(self, cfg):
+        """'engine' if a gravita-compatible engine answers on the port, 'busy' if something else
+        holds it, 'free' otherwise."""
+        try:
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{cfg['port']}/v1/models", headers=auth(cfg))
+            with OPENER.open(req, timeout=2) as r:
+                return "engine" if r.status == 200 else "busy"
+        except urllib.error.HTTPError:
+            return "busy"
+        except OSError:
+            pass
+        with socket.socket() as sk:
+            sk.settimeout(1)
+            return "busy" if sk.connect_ex(("127.0.0.1", int(cfg["port"]))) == 0 else "free"
 
     def start(self):
         if self.running():
             return
         self.cfg = load()
+        self.blocked = ""
+        found = self.probe(self.cfg)
+        if found == "engine":
+            self.external, self.started = True, time.time()
+            return
+        if found == "busy":
+            self.blocked = (f"port {self.cfg['port']} is in use by another program "
+                            f"(or an engine with a different key) - change 'port' in {CONF}")
+            return
         with open(LOG, "ab") as log:
             log.write(f"\n--- start {time.strftime('%H:%M:%S')} ---\n".encode())
             self.p = subprocess.Popen(
@@ -95,6 +124,10 @@ class Engine:
         self.started = time.time()
 
     def stop(self):
+        if self.external:
+            self.external = False
+            self.ready = False
+            return
         if self.running():
             self.p.terminate()
             try:
@@ -185,9 +218,14 @@ def ui(scr, eng):
         cfg = load()
         h, w = scr.getmaxyx()
         scr.erase()
-        if eng.running():
+        if eng.external:
+            state, color = ("ready" if eng.ready else "starting"), (1 if eng.ready else 2)
+            state += f"  (already running on :{cfg['port']}, not managed by this window)"
+        elif eng.running():
             state, color = ("ready", 1) if eng.ready else ("starting", 2)
             state += f"  pid {eng.p.pid}  up {int(time.time() - eng.started)}s"
+        elif eng.blocked:
+            state, color = "blocked - port in use", 3
         elif eng.p is not None:
             state, color = f"exited ({eng.p.returncode}) - see log", 3
         else:
@@ -217,7 +255,8 @@ def ui(scr, eng):
         put(row + 2, 2, "── engine log " + "─" * max(0, w - 20), curses.A_DIM)
         for i, line in enumerate(tail(max(0, h - row - 7))):
             put(row + 3 + i, 2, line)
-        put(h - 3, 2, msg, curses.A_BOLD)
+        put(h - 3, 2, eng.blocked or msg,
+            curses.A_BOLD | (curses.color_pair(3) if eng.blocked else 0))
         put(h - 1, 1, "[s]tart/stop [r]estart [t]est [i]nstall-gravitas [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
         scr.refresh()
 
