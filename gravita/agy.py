@@ -62,14 +62,9 @@ def install(agy):
 
 
 def routing(cfg):
-    """Where would an agy launched from THIS shell send its requests?"""
-    key, base = os.environ.get("GEMINI_API_KEY", ""), os.environ.get("GOOGLE_GEMINI_BASE_URL", "")
-    port = str(cfg.get("port"))
-    if key in (cfg.get("api_keys") or []) and key and port in base:
-        return OK, "gravita API (via env in this shell)"
-    if key or base:
-        return WARN, "a different API key/URL is set in this shell"
-    return WARN, "agy's own signed-in account (not gravita)"
+    """agy has no custom-endpoint setting: tested, it ignores GEMINI_API_KEY / GOOGLE_GEMINI_BASE_URL
+    and always uses its own signed-in account. The gravita API serves other apps, not agy."""
+    return OK, "agy always uses its own signed-in account (gravita API is for other apps)"
 
 
 def checks(cfg, engine_ready):
@@ -89,8 +84,7 @@ def checks(cfg, engine_ready):
     out.append(("Gravitas plugin", OK if state == "enabled" else FAIL, detail,
                 "" if state == "enabled" else "press i to install"))
     status, detail = routing(cfg)
-    out.append(("agy backend", status, detail,
-                "" if status == OK else "run `gravita agy` to launch through gravita"))
+    out.append(("agy backend", status, detail, ""))
     out.append(("Pro cookie", OK if cfg.get("cookie_file") else WARN,
                 "set" if cfg.get("cookie_file") else "optional: needed for real gemini-3.1-pro",
                 "" if cfg.get("cookie_file") else "press c to add"))
@@ -98,14 +92,10 @@ def checks(cfg, engine_ready):
 
 
 def launch(cfg, argv):
-    """Exec agy with gravita's endpoint exported, after saying so out loud."""
+    """Exec agy unchanged, after stating which backend it will use."""
     agy = find_agy()
     if not agy:
         sys.exit("gravita: agy not found")
-    key = (cfg.get("api_keys") or [""])[0]
-    env = dict(os.environ, GOOGLE_GEMINI_BASE_URL=f"http://127.0.0.1:{cfg['port']}")
-    if key:
-        env["GEMINI_API_KEY"] = key
-    print(f"gravita: launching agy -> gravita API http://127.0.0.1:{cfg['port']}/v1 "
-          f"(Gravitas plugin: {plugin_state(agy)})", file=sys.stderr)
-    os.execve(agy, [agy, *argv], env)
+    print(f"gravita: agy backend = its own signed-in account (not the gravita API). "
+          f"Gravitas plugin: {plugin_state(agy)}", file=sys.stderr)
+    os.execv(agy, [agy, *argv])

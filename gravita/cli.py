@@ -268,7 +268,7 @@ USAGE = """usage: gravita [--version] [--help] [setup | doctor | agy [agy args..
   (no args)  open the terminal UI and start the engine (Gravitas health + onboarding shown)
   setup      install the Gravitas plugin into agy so it loads on every session
   doctor     print the health checklist and exit non-zero if something is broken
-  agy ...    launch agy routed through the gravita API (prints which backend it uses)
+  agy ...    launch agy and print which backend and plugin state it runs with
 Engine listens on http://127.0.0.1:8081/v1. Keys: s r t i k c p q."""
 
 

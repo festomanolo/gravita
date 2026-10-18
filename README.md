@@ -126,12 +126,13 @@ evidence before "done").
 ```bash
 gravita setup     # install the Gravitas plugin into agy (also: press i in the dashboard)
 gravita doctor    # print the health checklist; non-zero exit if something is broken
-gravita agy ...   # launch agy with GEMINI_API_KEY / GOOGLE_GEMINI_BASE_URL pointed at gravita
+gravita agy ...   # launch agy; prints that it uses its own account + the Gravitas plugin state
 ```
 
-The dashboard has a **health** panel (engine, agy, python3, Gravitas plugin, which backend agy would use,
-Pro cookie) and a **Next:** line that tells you the first thing to fix. The backend row reflects the
-environment of the shell that started gravita; it cannot see how an already-running agy was started.
+The dashboard has a **health** panel (engine, agy, python3, Gravitas plugin, agy backend, Pro cookie) and a
+**Next:** line that tells you the first thing to fix. Note: tested against agy, it ignores
+`GEMINI_API_KEY` / `GOOGLE_GEMINI_BASE_URL`, so agy always runs on its own signed-in account. The gravita
+API serves other apps (Cherry Studio, Codex, the OpenAI SDK, ...), not agy itself.
 Bundled Gravitas snapshot: upstream commit `f76b0d9`.
 
 ## Models
