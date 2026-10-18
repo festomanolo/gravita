@@ -126,6 +126,7 @@ evidence before "done").
 ```bash
 gravita setup     # install the Gravitas plugin into agy (also: press i in the dashboard)
 gravita doctor    # print the health checklist; non-zero exit if something is broken
+gravita onboard   # replay the first-run guide (shown automatically on first launch)
 gravita agy ...   # launch agy; prints that it uses its own account + the Gravitas plugin state
 ```
 
@@ -133,6 +134,11 @@ The dashboard has a **health** panel (engine, agy, python3, Gravitas plugin, agy
 **Next:** line that tells you the first thing to fix. Note: tested against agy, it ignores
 `GEMINI_API_KEY` / `GOOGLE_GEMINI_BASE_URL`, so agy always runs on its own signed-in account. The gravita
 API serves other apps (Cherry Studio, Codex, the OpenAI SDK, ...), not agy itself.
+In the dashboard, `i` installs/repairs Gravitas, `g` switches it on/off and `o` reopens the guide.
+
+Heads-up (tested): with the plugin on and no Gravitas task contract, agy is blocked from running shell
+commands and writing files. Start tasks with e.g. "Use Gravitas to fix this bug", or press `g` to turn it off.
+
 Bundled Gravitas snapshot: upstream commit `f76b0d9`.
 
 ## Models

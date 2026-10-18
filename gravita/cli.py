@@ -21,6 +21,7 @@ ENGINE = Path(__file__).resolve().parent / "engine" / "gemini_web2api.py"
 HOME = Path.home() / ".gravita"
 CONF = HOME / "config.json"
 LOG = HOME / "engine.log"
+ONBOARDED = HOME / "onboarded"
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # never proxy localhost
 DEFAULTS = {
     "port": 8081, "host": "127.0.0.1", "retry_attempts": 3, "retry_delay_sec": 2,
@@ -72,6 +73,17 @@ class Engine:
             if not self.busy:
                 self.checks = agy.checks(load(), self.ready)
             time.sleep(4)
+
+    def toggle_gravitas(self):
+        def work():
+            path = agy.find_agy()
+            if not path:
+                self.test = "agy not found"
+                return
+            ok, text = agy.set_enabled(path, agy.plugin_state(path) != "enabled")
+            self.checks = agy.checks(load(), self.ready)
+            self.test = "gravitas: " + text
+        threading.Thread(target=work, daemon=True).start()
 
     def install_gravitas(self):
         def work():
@@ -196,6 +208,98 @@ def prompt(scr, label):
         scr.timeout(400)
 
 
+MARKS = {agy.OK: ("✔", 1), agy.WARN: ("!", 2), agy.FAIL: ("✖", 3)}
+
+
+def draw_checks(put, y, checks):
+    for i, (label, st, detail, fix) in enumerate(checks):
+        mark, col = MARKS[st]
+        put(y + i, 2, mark, curses.color_pair(col) | curses.A_BOLD)
+        put(y + i, 4, f"{label:<18}{detail}")
+        if fix:
+            put(y + i, 4 + 18 + len(detail) + 2, "→ " + fix, curses.A_DIM)
+
+
+PAGES = [
+    ("Welcome to gravita", [
+        "gravita does two separate things:",
+        "",
+        "  1. Serves a free OpenAI-compatible API (Gemini web) at http://127.0.0.1:{port}/v1",
+        "     for apps like Cherry Studio, Codex, the OpenAI SDK or curl.",
+        "  2. Installs Gravitas into the Antigravity CLI (agy) as a plugin.",
+        "",
+        "Important: agy does NOT use the gravita API. Tested: it ignores custom endpoints",
+        "and always runs on its own signed-in account. The API is for your other apps.",
+    ]),
+    ("Setup checklist", None),
+    ("How Gravitas behaves in agy", [
+        "Once installed, Gravitas loads on every agy session and gates tool calls.",
+        "",
+        "Verified here: with no task contract, agy is blocked from running shell",
+        "commands and writing files (reads still work). Upstream's way to start a task",
+        "is to ask for it by name, e.g.  \"Use Gravitas to fix this bug and verify it\".",
+        "Headless runs (agy -p) cannot answer permission prompts.",
+        "",
+        "Want plain agy back? Press g in the dashboard to switch the plugin off and on.",
+    ]),
+    ("You're set", [
+        "Dashboard keys:  s start/stop   r restart   t test   i install Gravitas",
+        "                 g Gravitas on/off   o this guide   k key   c cookie   p proxy",
+        "",
+        "Terminal:  gravita doctor   print the health checklist",
+        "           gravita setup    install/repair the Gravitas plugin",
+        "           gravita onboard  show this guide again",
+    ]),
+]
+
+
+def onboarding(scr, eng):
+    """Full-screen first-run guide. Enter/right = next, b/left = back, i = install, q/Esc = close."""
+    cfg = load()
+    page = 0
+    scr.timeout(400)
+    while True:
+        h, w = scr.getmaxyx()
+        scr.erase()
+        title, lines = PAGES[page]
+
+        def put(y, x, text, attr=0):
+            try:
+                scr.addnstr(y, x, text, max(0, w - x - 1), attr)
+            except curses.error:
+                pass
+
+        put(0, 1, f"gravita setup  {page + 1}/{len(PAGES)}", curses.A_DIM)
+        put(2, 2, title, curses.A_BOLD)
+        if lines is None:
+            draw_checks(put, 4, eng.checks)
+            put(5 + len(eng.checks), 2, eng.busy or "Press i to install/repair Gravitas, s to start the engine.")
+        else:
+            for i, line in enumerate(lines):
+                put(4 + i, 2, line.format(port=cfg["port"]))
+        put(h - 1, 1, "[enter] next  [b]ack  [i]nstall Gravitas  [s]tart engine  [q] close", curses.A_REVERSE)
+        scr.refresh()
+        ch = scr.getch()
+        k = chr(ch).lower() if 0 < ch < 256 else ""
+        if k == "q" or ch == 27:
+            break
+        elif k == "i":
+            eng.install_gravitas()
+        elif k == "s":
+            eng.start()
+        elif k == "b" or ch == curses.KEY_LEFT:
+            page = max(0, page - 1)
+        elif ch in (10, 13, curses.KEY_ENTER, curses.KEY_RIGHT) or k == " ":
+            if page == len(PAGES) - 1:
+                break
+            page += 1
+    try:
+        ONBOARDED.write_text("1\n")
+    except OSError:
+        pass
+    scr.timeout(400)
+
+
 def ui(scr, eng):
     curses.curs_set(0)
     scr.timeout(400)
@@ -207,6 +311,8 @@ def ui(scr, eng):
         curses.init_pair(3, curses.COLOR_RED, -1)
     reveal, msg = False, "engine starting"
     eng.start()
+    if not ONBOARDED.exists():
+        onboarding(scr, eng)
 
     def put(y, x, text, attr=0):
         try:
@@ -241,13 +347,7 @@ def ui(scr, eng):
                   f"   proxy: {cfg['proxy'] or 'no'}")
         put(5, 2, eng.test)
         put(7, 2, "── health " + "─" * max(0, w - 14), curses.A_DIM)
-        marks = {agy.OK: ("✔", 1), agy.WARN: ("!", 2), agy.FAIL: ("✖", 3)}
-        for i, (label, st, detail, fix) in enumerate(eng.checks):
-            mark, col = marks[st]
-            put(8 + i, 2, mark, curses.color_pair(col) | curses.A_BOLD)
-            put(8 + i, 4, f"{label:<18}{detail}")
-            if fix:
-                put(8 + i, 4 + 18 + len(detail) + 2, "→ " + fix, curses.A_DIM)
+        draw_checks(put, 8, eng.checks)
         row = 8 + len(eng.checks)
         todo = next((c for c in eng.checks if c[1] == agy.FAIL), None)
         nxt = eng.busy or (f"Next: {todo[0]} - {todo[3] or todo[2]}" if todo else "All set. agy is ready.")
@@ -255,9 +355,9 @@ def ui(scr, eng):
         put(row + 2, 2, "── engine log " + "─" * max(0, w - 20), curses.A_DIM)
         for i, line in enumerate(tail(max(0, h - row - 7))):
             put(row + 3 + i, 2, line)
-        put(h - 3, 2, eng.blocked or msg,
+        put(h - 3, 2, eng.blocked or ("" if eng.ready and msg == "engine starting" else msg),
             curses.A_BOLD | (curses.color_pair(3) if eng.blocked else 0))
-        put(h - 1, 1, "[s]tart/stop [r]estart [t]est [i]nstall-gravitas [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
+        put(h - 1, 1, "[s]tart/stop [r]estart [t]est [i]nstall Gravitas  [g] on/off  [o]nboarding [k]ey [c]ookie [p]roxy [q]uit", curses.A_REVERSE)
         scr.refresh()
 
         ch = scr.getch()
@@ -282,6 +382,11 @@ def ui(scr, eng):
                 eng.run_test()
             else:
                 msg = "engine not ready - start it first"
+        elif k == "g":
+            eng.toggle_gravitas()
+            msg = "toggling Gravitas..."
+        elif k == "o":
+            onboarding(scr, eng)
         elif k == "i":
             eng.install_gravitas()
             msg = "installing Gravitas..."
@@ -302,7 +407,15 @@ def ui(scr, eng):
             msg = "proxy saved - press r to apply"
 
 
-USAGE = """usage: gravita [--version] [--help] [setup | doctor | agy [agy args...]]
+def onboard_standalone(scr):
+    curses.start_color()
+    curses.use_default_colors()
+    for i, color in ((1, curses.COLOR_GREEN), (2, curses.COLOR_YELLOW), (3, curses.COLOR_RED)):
+        curses.init_pair(i, color, -1)
+    onboarding(scr, Engine())
+
+
+USAGE = """usage: gravita [--version] [--help] [setup | doctor | onboard | agy [agy args...]]
 
   (no args)  open the terminal UI and start the engine (Gravitas health + onboarding shown)
   setup      install the Gravitas plugin into agy so it loads on every session
@@ -334,6 +447,9 @@ def main():
             for label, st, detail, fix in rows:
                 print(f"{ {'ok': '✔', 'warn': '!', 'fail': '✖'}[st] } {label:<18}{detail}" + (f"  -> {fix}" if fix else ""))
             sys.exit(1 if any(r[1] == agy.FAIL for r in rows) else 0)
+        elif cmd == "onboard":
+            bootstrap()
+            curses.wrapper(onboard_standalone)
         elif cmd == "agy":
             bootstrap()
             agy.launch(load(), sys.argv[2:])

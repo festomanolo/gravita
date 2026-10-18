@@ -61,6 +61,13 @@ def install(agy):
     return state == "enabled", f"Gravitas plugin {state}"
 
 
+def set_enabled(agy, on):
+    """Enable or disable the Gravitas plugin. Returns (ok, message)."""
+    code, out = _run([agy, "plugin", "enable" if on else "disable", PLUGIN])
+    state = plugin_state(agy)
+    return state == ("enabled" if on else "disabled"), f"Gravitas plugin {state}" if code == 0 else out[-120:]
+
+
 def routing(cfg):
     """agy has no custom-endpoint setting: tested, it ignores GEMINI_API_KEY / GOOGLE_GEMINI_BASE_URL
     and always uses its own signed-in account. The gravita API serves other apps, not agy."""
@@ -79,10 +86,11 @@ def checks(cfg, engine_ready):
     out.append(("python3 for hooks", OK if py else FAIL, py or "not on PATH",
                 "" if py else "Gravitas hooks run `python3`"))
     state = plugin_state(agy) if agy else "missing"
-    detail = {"enabled": "auto-loads on every agy session", "disabled": "installed but disabled",
+    detail = {"enabled": "loads every session; blocks shell/edits until a task contract exists", "disabled": "installed but disabled",
               "missing": "not installed"}[state]
-    out.append(("Gravitas plugin", OK if state == "enabled" else FAIL, detail,
-                "" if state == "enabled" else "press i to install"))
+    level = {"enabled": OK, "disabled": WARN, "missing": FAIL}[state]
+    fix = {"enabled": "", "disabled": "press g to enable", "missing": "press i to install"}[state]
+    out.append(("Gravitas plugin", level, detail, fix))
     status, detail = routing(cfg)
     out.append(("agy backend", status, detail, ""))
     out.append(("Pro cookie", OK if cfg.get("cookie_file") else WARN,
