@@ -38,6 +38,7 @@ gravita = "gravita.cli:main"
 
 [tool.setuptools]
 packages = ["gravita"]
+include-package-data = true
 
 [tool.setuptools.package-data]
-gravita = ["engine/*.py", "engine/LICENSE"]
+gravita = ["engine/*.py", "engine/LICENSE", "vendor/GRAVITAS_LICENSE", "vendor/gravitas-antigravity/**/*"]
