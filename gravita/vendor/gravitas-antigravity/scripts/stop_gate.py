@@ -160,7 +160,7 @@ def main():
 
     contract = load_contract(session_dir)
     if contract is None:
-        reason = "Completion gate: contract is missing or invalid; cannot verify completion"
+        reason = "Completion gate: contract is invalid; cannot verify completion"
         record_stop_gate_cycle(session_dir, "continue", reason)
         print(json.dumps({"decision": "continue", "reason": reason}))
         return
