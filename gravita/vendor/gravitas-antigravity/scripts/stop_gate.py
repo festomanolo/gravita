@@ -189,12 +189,6 @@ def main():
         reason = f"Completion gate: evidence chain invalid ({chain_reason}); refusing completion"
         record_stop_gate_cycle(session_dir, "continue", reason)
         print(json.dumps({"decision": "continue", "reason": reason}))
-        print(json.dumps({
-            "decision": "allow",
-            "unverified": True,
-            "reason": reason,
-            "deficit": deficit_cb,
-        }))
         return
 
     # Acceptance criteria gate on fresh owned evidence only. Stale PASS
