@@ -153,6 +153,11 @@ def main():
     # UNVERIFIED (allows the host to stop without ever reporting false PASS).
     # It runs before every refusal so a broken contract cannot loop forever.
     if count_stop_gate_cycles(session_dir) >= 3:
+        reason = "Completion gate circuit breaker: 3+ verification cycles. Terminating as UNVERIFIED."
+        record_stop_gate_cycle(session_dir, "allow-unverified", reason)
+        print(json.dumps({"decision": "allow", "unverified": True, "reason": reason}))
+        return
+
     contract = load_contract(session_dir)
     if contract is None:
         reason = "Completion gate: contract is missing or invalid; cannot verify completion"
