@@ -73,6 +73,10 @@ def load_reads(session_dir: Path) -> set:
     return reads
 
 
+def last_write_time(session_dir: Path) -> str:
+    """ISO timestamp of the latest recorded write this session, or ''."""
+    latest = ""
+    evidence_path = session_dir / "evidence.jsonl"
 def deny(reason: str):
     print(json.dumps({"decision": "deny", "reason": reason}))
 
