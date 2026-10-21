@@ -87,6 +87,11 @@ def last_write_time(session_dir: Path) -> str:
                     entry = json.loads(line)
                 except json.JSONDecodeError:
                     continue
+                if entry.get("source") == "write" and entry.get("success") is not False:
+                    latest = max(latest, str(entry.get("timestamp", "")))
+    return latest
+
+
 def deny(reason: str):
     print(json.dumps({"decision": "deny", "reason": reason}))
 
