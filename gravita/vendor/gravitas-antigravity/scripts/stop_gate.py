@@ -144,6 +144,10 @@ def main():
         print(json.dumps({"decision": "allow"}))
         return
 
+    # A conversation that never initialized a contract has nothing to gate.
+    if not (session_dir / "contract.json").exists():
+        print(json.dumps({"decision": "allow"}))
+        return
     contract = load_contract(session_dir)
     if contract is None:
         reason = "Completion gate: contract is missing or invalid; cannot verify completion"
