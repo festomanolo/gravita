@@ -189,12 +189,6 @@ def main():
         reason = f"Completion gate: evidence chain invalid ({chain_reason}); refusing completion"
         record_stop_gate_cycle(session_dir, "continue", reason)
         print(json.dumps({"decision": "continue", "reason": reason}))
-        return
-
-    # Circuit breaker: after 3+ cycles terminate safely as EXPLICITLY
-    # UNVERIFIED (allows the host to stop without ever reporting false PASS).
-    cycle_count = count_stop_gate_cycles(session_dir)
-    if cycle_count >= 3:
         states_cb = criterion_states(contract, evidence)
         deficit_cb = evidence_deficit(contract, states_cb)
         reason = ("Completion gate circuit breaker: 3+ verification cycles. "
