@@ -130,9 +130,10 @@ def main():
     reads = load_reads(session_dir) if session_dir else set()
     fingerprint = action_fingerprint(envelope.tool, envelope.args)
 
-    # A failure bans its exact fingerprint until something material changes.
-    # Entries marked resolved:true (via `gravitas resolve-failure` after the
-    # transient cause is gone) re-arm the action; everything else still bans.
+    # A failure bans its exact fingerprint until something material changes:
+    # a write recorded after the failure, or an entry marked resolved:true
+    # (via `gravitas resolve-failure`), re-arms the action.
+    last_write = last_write_time(session_dir) if session_dir else ""
     resolved = {entry.get("fingerprint") for entry in failures
                 if entry.get("resolved") is True and entry.get("fingerprint")}
     failed = {entry.get("fingerprint") for entry in failures
