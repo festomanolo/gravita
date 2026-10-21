@@ -117,10 +117,8 @@ def main():
     mode = normalize_mode(raw_mode)
 
     # A native conversation without a contract runs under the default
-    if payload.get("conversationId") and not (session_dir and (session_dir / "contract.json").exists()):
-        if action.kind in ("write", "execute", "network"):
-            deny("Native session is not initialized with a Gravitas contract; mutations and shell commands fail closed.")
-            return
+    # implement policy (no scope limit). It never inherits another task's
+    # contract: session lookup is conversation-scoped.
 
     if action.kind == "write" and not session_dir:
         target = action.paths[0] if action.paths else ""
