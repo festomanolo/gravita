@@ -82,6 +82,11 @@ def last_write_time(session_dir: Path) -> str:
     with open(evidence_path) as f:
         for line in f:
             line = line.strip()
+            if line:
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
 def deny(reason: str):
     print(json.dumps({"decision": "deny", "reason": reason}))
 
