@@ -116,9 +116,7 @@ def main():
         return
     mode = normalize_mode(raw_mode)
 
-    # A native conversation without an initialized contract is deliberately
-    # unable to mutate. This prevents one task from inheriting another task's
-    # policy via a "latest session" fallback.
+    # A native conversation without a contract runs under the default
     if payload.get("conversationId") and not (session_dir and (session_dir / "contract.json").exists()):
         if action.kind in ("write", "execute", "network"):
             deny("Native session is not initialized with a Gravitas contract; mutations and shell commands fail closed.")
