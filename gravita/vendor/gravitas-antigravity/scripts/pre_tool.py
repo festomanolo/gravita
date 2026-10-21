@@ -77,6 +77,11 @@ def last_write_time(session_dir: Path) -> str:
     """ISO timestamp of the latest recorded write this session, or ''."""
     latest = ""
     evidence_path = session_dir / "evidence.jsonl"
+    if not evidence_path.exists():
+        return latest
+    with open(evidence_path) as f:
+        for line in f:
+            line = line.strip()
 def deny(reason: str):
     print(json.dumps({"decision": "deny", "reason": reason}))
 
