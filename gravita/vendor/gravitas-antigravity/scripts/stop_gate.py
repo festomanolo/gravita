@@ -148,6 +148,11 @@ def main():
     if not (session_dir / "contract.json").exists():
         print(json.dumps({"decision": "allow"}))
         return
+
+    # Circuit breaker: after 3+ cycles terminate safely as EXPLICITLY
+    # UNVERIFIED (allows the host to stop without ever reporting false PASS).
+    # It runs before every refusal so a broken contract cannot loop forever.
+    if count_stop_gate_cycles(session_dir) >= 3:
     contract = load_contract(session_dir)
     if contract is None:
         reason = "Completion gate: contract is missing or invalid; cannot verify completion"
