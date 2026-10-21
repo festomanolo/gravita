@@ -189,12 +189,6 @@ def main():
         reason = f"Completion gate: evidence chain invalid ({chain_reason}); refusing completion"
         record_stop_gate_cycle(session_dir, "continue", reason)
         print(json.dumps({"decision": "continue", "reason": reason}))
-        states_cb = criterion_states(contract, evidence)
-        deficit_cb = evidence_deficit(contract, states_cb)
-        reason = ("Completion gate circuit breaker: 3+ verification cycles. "
-                  "Terminating as UNVERIFIED, not as completion: "
-                  + "; ".join(f"{d['criterion']} ({d['status']})" for d in deficit_cb[:5]))
-        record_stop_gate_cycle(session_dir, "allow-unverified", reason)
         print(json.dumps({
             "decision": "allow",
             "unverified": True,
