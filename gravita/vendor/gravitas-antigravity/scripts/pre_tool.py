@@ -137,7 +137,8 @@ def main():
     resolved = {entry.get("fingerprint") for entry in failures
                 if entry.get("resolved") is True and entry.get("fingerprint")}
     failed = {entry.get("fingerprint") for entry in failures
-              if entry.get("fingerprint") and entry.get("fingerprint") not in resolved}
+              if entry.get("fingerprint") and entry.get("fingerprint") not in resolved
+              and str(entry.get("timestamp", "")) >= last_write}
 
     decision, reason = evaluate_action(
         action,
